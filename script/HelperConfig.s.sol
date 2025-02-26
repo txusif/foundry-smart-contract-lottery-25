@@ -49,6 +49,10 @@ contract HelperConfig is Script, CodeConstants {
         }
     }
 
+    function getConfig() public returns (NetworkConfig memory) {
+        return getConfigByChainId(block.chainid);
+    }
+
     function getMainnetEthConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
             entranceFee: 0.01 ether, // 1e16
