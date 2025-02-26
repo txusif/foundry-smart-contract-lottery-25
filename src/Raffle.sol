@@ -190,9 +190,9 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         return i_interval;
     }
 
-    // function getRaffleState() public view returns (RaffleState) {
-    //     return s_raffleState;
-    // }
+    function getRaffleState() public view returns (RaffleState) {
+        return s_raffleState;
+    }
 
     function getRecentWinner() public view returns (address) {
         return s_recentWinner;
