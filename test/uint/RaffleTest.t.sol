@@ -15,7 +15,7 @@ contract RaffleTest is Test, CodeConstants {
     HelperConfig public helperConfig;
 
     uint256 raffleEtranceFee;
-    uint256 interval;
+    uint256 automationUpdateInterval;
     address vrfCoordinator;
     bytes32 gasLane;
     uint256 callbackGasLimit;
@@ -35,7 +35,7 @@ contract RaffleTest is Test, CodeConstants {
 
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
         raffleEtranceFee = config.entranceFee;
-        interval = config.interval;
+        automationUpdateInterval = config.interval;
         vrfCoordinator = config.vrfCoordinator;
         gasLane = config.gasLane;
         callbackGasLimit = config.callbackGasLimit;
@@ -73,6 +73,21 @@ contract RaffleTest is Test, CodeConstants {
         emit RaffleEntered(PLAYER);
 
         // Assert
+        raffle.enterRaffle{value: raffleEtranceFee}();
+    }
+
+    function testDontAllowPlayersToEnterWhileRaffleIsCalculating() public {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: STARTING_PLAYER_BALANCE}();
+
+        vm.warp(block.timestamp + automationUpdateInterval + 1); // ! sets block.timestamp
+        vm.roll(block.number + 1); // ! sets block.number
+        raffle.performUpkeep("");
+
+        // Act / Assert
+        vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
+        vm.prank(PLAYER);
         raffle.enterRaffle{value: raffleEtranceFee}();
     }
 }
