@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {Script, console} from "forge-std/Script.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
 import {Raffle} from "../src/Raffle.sol";
-// import {DevOpsTools} from "foundry-devops/src/DevOpsTools.sol";
+import {DevOpsTools} from "foundry-devops/src/DevOpsTools.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {LinkToken} from "../test/mocks/LinkToken.sol";
 import {CodeConstants} from "./HelperConfig.s.sol";
@@ -72,9 +72,30 @@ contract FundSubscription is Script, CodeConstants {
 }
 
 contract AddConsumer is Script {
-    function addConsumerUsingConfig() public {}
+    function addConsumer(address contractToAddToVrf, address vrfCoordinator, uint256 subscriptionId, address account)
+        public
+    {
+        console.log("Adding consumer contract: ", contractToAddToVrf);
+        console.log("Using vrfCoordinator: ", vrfCoordinator);
+        console.log("On ChainID: ", block.chainid);
 
-    function addConsumer() public {}
+        vm.startBroadcast(account);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).addConsumer(subscriptionId, contractToAddToVrf);
+        vm.stopBroadcast();
+    }
 
-    function run() external {}
+    function addConsumerUsingConfig(address mostRecentlyDeployed) public {
+        HelperConfig helperConfig = new HelperConfig();
+        address vrfCoordinator = helperConfig.getConfig().vrfCoordinator;
+        uint256 subId = helperConfig.getConfig().subscriptionId;
+        address account = helperConfig.getConfig().account;
+
+        addConsumer(mostRecentlyDeployed, vrfCoordinator, subId, account);
+    }
+
+    function run() external {
+        address mostRecentlyDeployed = DevOpsTools.get_most_recent_deployment("Raffle", block.chainid);
+
+        addConsumerUsingConfig(mostRecentlyDeployed);
+    }
 }
