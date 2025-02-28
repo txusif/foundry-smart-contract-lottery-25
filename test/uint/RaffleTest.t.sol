@@ -4,8 +4,7 @@ pragma solidity ^0.8.19;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {VRFCoordinatorV2_5Mock} from
-    "chainlink-brownie-contracts/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {VRFCoordinatorV2_5Mock} from "chainlink-brownie-contracts/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 import {Raffle} from "../../src/Raffle.sol";
 import {HelperConfig, CodeConstants} from "../../script/HelperConfig.s.sol";
@@ -98,7 +97,7 @@ contract RaffleTest is Test, CodeConstants {
         vm.roll(block.number + 1);
 
         // Act
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
 
         // Assert
         assert(!upkeepNeeded);
@@ -114,7 +113,7 @@ contract RaffleTest is Test, CodeConstants {
         raffle.performUpkeep("");
 
         // Act
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
 
         // Assert
         assert(!upkeepNeeded);
@@ -126,7 +125,7 @@ contract RaffleTest is Test, CodeConstants {
         raffle.enterRaffle{value: STARTING_PLAYER_BALANCE}();
 
         // Act
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
 
         // Assert
         assert(!upkeepNeeded);
@@ -141,7 +140,7 @@ contract RaffleTest is Test, CodeConstants {
         vm.roll(block.number + 1);
 
         // Act
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
 
         // Assert
         assert(upkeepNeeded);
@@ -173,7 +172,12 @@ contract RaffleTest is Test, CodeConstants {
 
         // Act / Assert
         vm.expectRevert(
-            abi.encodeWithSelector(Raffle.Raffle__UpkeepNotNeeded.selector, currentBalance, numPlayers, rState)
+            abi.encodeWithSelector(
+                Raffle.Raffle__UpkeepNotNeeded.selector,
+                currentBalance,
+                numPlayers,
+                rState
+            )
         );
         raffle.performUpkeep("");
     }
@@ -186,13 +190,10 @@ contract RaffleTest is Test, CodeConstants {
         _;
     }
 
-    function testPeformUpkeepUpdateRaffleStateAndEmitsRequestId() public raffleEntered {
-        // Arrange
-        vm.prank(PLAYER);
-        raffle.enterRaffle{value: STARTING_PLAYER_BALANCE}();
-        vm.warp(block.timestamp + automationUpdateInterval + 1);
-        vm.roll(block.number + 1);
-
+    function testPeformUpkeepUpdateRaffleStateAndEmitsRequestId()
+        public
+        raffleEntered
+    {
         // Act
         vm.recordLogs();
         raffle.performUpkeep("");
@@ -204,5 +205,15 @@ contract RaffleTest is Test, CodeConstants {
         Raffle.RaffleState rState = raffle.getRaffleState();
         assert(uint256(rState) > 0);
         assert(uint256(requestId) == 1);
+    }
+
+    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(
+        uint256 randomRequestId
+    ) public raffleEntered {
+        vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
+            randomRequestId,
+            address(this)
+        );
     }
 }
