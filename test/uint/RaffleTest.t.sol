@@ -146,4 +146,63 @@ contract RaffleTest is Test, CodeConstants {
         // Assert
         assert(upkeepNeeded);
     }
+
+    function testPerformUpkeepOnlyRunWhenUnkeepIsTrue() public {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: STARTING_PLAYER_BALANCE}();
+
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        vm.roll(block.number + 1);
+
+        // Act / Assert
+        // vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
+        raffle.performUpkeep("");
+    }
+
+    function testPerformUpkeepRevertsIfCheckUpkeepIsFalse() public {
+        // Arrange
+        uint256 currentBalance = 0;
+        uint256 numPlayers = 0;
+        Raffle.RaffleState rState = raffle.getRaffleState();
+
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: raffleEtranceFee}();
+        currentBalance += raffleEtranceFee;
+        numPlayers = 1;
+
+        // Act / Assert
+        vm.expectRevert(
+            abi.encodeWithSelector(Raffle.Raffle__UpkeepNotNeeded.selector, currentBalance, numPlayers, rState)
+        );
+        raffle.performUpkeep("");
+    }
+
+    modifier raffleEntered() {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: STARTING_PLAYER_BALANCE}();
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        vm.roll(block.number + 1);
+        _;
+    }
+
+    function testPeformUpkeepUpdateRaffleStateAndEmitsRequestId() public raffleEntered {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: STARTING_PLAYER_BALANCE}();
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        vm.roll(block.number + 1);
+
+        // Act
+        vm.recordLogs();
+        raffle.performUpkeep("");
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        // Assert
+        Raffle.RaffleState rState = raffle.getRaffleState();
+        assert(uint256(rState) > 0);
+        assert(uint256(requestId) == 1);
+    }
 }
